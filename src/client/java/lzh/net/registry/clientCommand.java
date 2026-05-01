@@ -38,4 +38,17 @@ public class clientCommand{
 
         return 1;
     }
+
+    public static int debug(CommandContext<FabricClientCommandSource> context) {
+        if(LzhClient.isCalculating) {
+            context.getSource().getPlayer().sendSystemMessage(Component.literal("true"));
+        }else {
+            context.getSource().getPlayer().sendSystemMessage(Component.literal("false"));
+        }
+
+        context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.blocKPosToRender.size()))));
+        context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.endPos))));
+        context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.tempEndPos))));
+        return 0;
+    }
 }
