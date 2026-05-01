@@ -33,6 +33,7 @@ public class LzhClient implements ClientModInitializer {
 	public static BlockPos tempEndPos;
 	public static BlockPos endPos;
 	public static float thressholdDivDist = 24;
+	public static boolean isCalculating = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -51,40 +52,46 @@ public class LzhClient implements ClientModInitializer {
 
 		//for pathfinding
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			//track player pos
-			if (client.player == null || client.level == null) {
+			if (client.player == null || client.level == null || endPos == null) return;
+
+			BlockPos playerPos = client.player.blockPosition();
+
+			// arrive destination
+			if (playerPos.closerThan(endPos, 1.5)) {
+				endPos = null;
+				tempEndPos = null;
+				blocKPosToRender.clear();
+				client.player.sendSystemMessage(Component.literal("Arrived at destination!"));
 				return;
 			}
-			assert Minecraft.getInstance().player != null;
-			BlockPos playerPos = Minecraft.getInstance().player.blockPosition();
 
-//			if(runingWtfAlgo)
-//			{
-//
-//				//check if player arrive the TempEndPoint
-//				if (Astar.checkReachEnd(playerPos,tempEndPos)) {
-//
-//					MinecraftClient.getInstance().player.sendMessage(Text.literal("renewing path"),true);
-//					tempEndPos = null;
-//					blocKPosToRender.clear();
-//					Astar.Start();
-//				}
-//
-//			}
-			//check if player arrive at the End point
-			if (playerPos.equals(endPos)) {
-				//blocKPosToRender.clear();
-				endPos = null;
-				startPos = null;
+			// arrive thresshold
+			if (tempEndPos != null && !isCalculating && tempEndPos!=endPos) {
+				if (playerPos.closerThan(tempEndPos, 2.0)) {
+					// is calculation
+					isCalculating = true;
 
-				client.player.sendSystemMessage(Component.literal("your arrived at ur destination"));
-			} else if (tempEndPos != null) {
-				if (playerPos.getBottomCenter().distanceTo(tempEndPos.getBottomCenter()) < 2) {
+					// clear the render
 					blocKPosToRender.clear();
-					tempEndPos = new BlockPos(0,0,0);
-					Astar.Start(playerPos, endPos, thressholdDivDist);
 
-					client.player.sendSystemMessage(Component.literal("Recalculating.."));
+					client.player.sendSystemMessage(Component.literal("Recalculating..."));
+
+					// start Astar
+					Astar.Start(playerPos, endPos, thressholdDivDist);
+				}
+				if(blocKPosToRender.isEmpty()){
+					//dono why dead lol
+					System.out.println("dono why dead lol");
+					// is calculation
+					isCalculating = true;
+
+					// clear the render
+					blocKPosToRender.clear();
+
+					client.player.sendSystemMessage(Component.literal("Recalculating..."));
+
+					// start Astar
+					Astar.Start(playerPos, endPos, thressholdDivDist);
 				}
 			}
 		});
@@ -103,6 +110,8 @@ public class LzhClient implements ClientModInitializer {
 												.then(ClientCommands.argument("thres",IntegerArgumentType.integer())
 													.executes(clientCommand::navigate)
 										)))))
+				.then(ClientCommands.literal("debug")
+						.executes(clientCommand::debug))
 		);
 	}
 
