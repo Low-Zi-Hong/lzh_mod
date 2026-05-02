@@ -2,6 +2,7 @@ package lzh.net.client;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import lzh.net.feature.Astar;
+import lzh.net.feature.botSystem.autoBot;
 import lzh.net.feature.path;
 
 import lzh.net.feature.renderingSystem.blockRenderer;
@@ -22,6 +23,8 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 
+import static lzh.net.feature.botSystem.autoBot.onClientTick;
+
 public class LzhClient implements ClientModInitializer {
 
 	//Rendering path coor list
@@ -34,6 +37,9 @@ public class LzhClient implements ClientModInitializer {
 	public static BlockPos endPos;
 	public static float thressholdDivDist = 24;
 	public static boolean isCalculating = false;
+
+	//bot
+	public static boolean startBot = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -50,6 +56,11 @@ public class LzhClient implements ClientModInitializer {
 			//RenderLine.register(context);
 		});
 
+		//for bot
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			if (startBot) onClientTick();
+		});
+
 		//for pathfinding
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (client.player == null || client.level == null || endPos == null) return;
@@ -62,6 +73,8 @@ public class LzhClient implements ClientModInitializer {
 				tempEndPos = null;
 				blocKPosToRender.clear();
 				client.player.sendSystemMessage(Component.literal("Arrived at destination!"));
+				startBot = false;
+				autoBot.killBot();
 				return;
 			}
 
@@ -112,6 +125,8 @@ public class LzhClient implements ClientModInitializer {
 										)))))
 				.then(ClientCommands.literal("debug")
 						.executes(clientCommand::debug))
+				.then(ClientCommands.literal("bot")
+						.executes(clientCommand::startBot))
 		);
 	}
 

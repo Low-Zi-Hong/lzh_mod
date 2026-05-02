@@ -4,6 +4,7 @@ package lzh.net.feature;
 import com.llamalad7.mixinextras.lib.apache.commons.ObjectUtils;
 import lzh.net.Lzh;
 import lzh.net.client.LzhClient;
+import lzh.net.feature.botSystem.autoBot;
 import net.fabricmc.loader.impl.lib.sat4j.core.Vec;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -438,6 +439,10 @@ public class Astar {
         {
             LzhClient.blocKPosToRender.add(new path.PathUnit(bestPathTrace.get(i).PathUnit_Coor,bestPathTrace.get(i).previous_Direction));
         }
+
+        LzhClient.blocKPosToRender.reversed();
+        if(LzhClient.startBot) autoBot.updateGeneratedPath = true;
+        //here reverse the list...
 
         //MinecraftClient.getInstance().player.sendMessage(Text.literal("Algorithm finish!"));
 

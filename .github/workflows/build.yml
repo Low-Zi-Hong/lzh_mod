@@ -5,13 +5,15 @@ on:
       - main
       - mc26
     tags:
-      - 'v*' # 当你推送 v1.0, v2.0 等标签时触发发布任务
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      mod_version: ${{ steps.get_version.outputs.VERSION }}
+    # 【核心修复 1】：赋予 Release 写入权限
+    permissions:
+      contents: write
+
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
@@ -22,23 +24,31 @@ jobs:
           java-version: '25'
           distribution: 'microsoft'
 
-      - name: build with gradle
-        run: chmod +x gradlew && ./gradlew build
+      - name: make gradle wrapper executable
+        run: chmod +x gradlew
 
-      # 这里的目的是找到打出来的 jar 包名字，方便后面发布
+      - name: build with gradle
+        # 使用 build 确保生成所有 jar
+        run: ./gradlew build
+
+      # 【核心修复 2】：更稳妥地抓取 jar 包名字
       - name: get version
         id: get_version
-        run: echo "VERSION=$(ls build/libs/ | grep -v "-sources" | grep -v "-dev" | head -n 1)" >> $GITHUB_OUTPUT
+        run: |
+          # 寻找 build/libs 下不带 -sources 和 -dev 的那个主 jar 包
+          JAR_NAME=$(ls build/libs/ | grep ".jar" | grep -v "-sources" | grep -v "-dev" | head -n 1)
+          echo "JAR_NAME=$JAR_NAME" >> $GITHUB_OUTPUT
+          echo "找到的 JAR 包是: $JAR_NAME"
 
-      # 发布逻辑：只有在推送 Tag 时才会运行这一步
       - name: create release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/${{ steps.get_version.outputs.VERSION }}
+          # 使用精确的文件路径
+          files: build/libs/${{ steps.get_version.outputs.JAR_NAME }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 这是 GitHub 自动生成的，不需要你设置
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

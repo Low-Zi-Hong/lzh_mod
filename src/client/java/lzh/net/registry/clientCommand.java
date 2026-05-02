@@ -49,6 +49,12 @@ public class clientCommand{
         context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.blocKPosToRender.size()))));
         context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.endPos))));
         context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.tempEndPos))));
+        context.getSource().getPlayer().sendSystemMessage(Component.literal(String.valueOf((LzhClient.startBot))));
+        return 0;
+    }
+
+    public static int startBot(CommandContext<FabricClientCommandSource> context) {
+        LzhClient.startBot = true;
         return 0;
     }
 }
