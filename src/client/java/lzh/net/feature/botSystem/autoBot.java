@@ -6,6 +6,7 @@
     import net.minecraft.client.Minecraft;
     import net.minecraft.client.multiplayer.ClientLevel;
     import net.minecraft.core.BlockPos;
+    import net.minecraft.world.level.block.Blocks;
     import net.minecraft.world.level.block.state.BlockState;
 
     import java.util.LinkedList;
@@ -110,79 +111,84 @@
                         BlockState block_3 = world.getBlockState(block_3_pos);
                         BlockState block_4 = world.getBlockState(block_4_pos);
 
-                        switch (unit.dirFromPrevious) {
-                            case Up -> {
-                                System.out.println("A Up Operation is added");
+                        if (detectPlayerSwimming(block_0, block_1, block_2, block_3)) {
+                            actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.swim));
+                        } else {
 
-                                if (!emptyBlockPos(block_2)) {
-                                    actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
+                            switch (unit.dirFromPrevious) {
+                                case Up -> {
+                                    System.out.println("A Up Operation is added");
+
+                                    if (!emptyBlockPos(block_2)) {
+                                        actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
+                                    }
+                                    if (emptyBlockPos(block_0)) {
+                                        actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.JumpnPlace));
+                                    }
+                                    // Add your logic for the "Up" direction here
                                 }
-                                if (emptyBlockPos(block_0)) {
-                                    actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.JumpnPlace));
+                                case Down -> {
+                                    System.out.println("A Down Operation is added");
+
+                                    if (!emptyBlockPos(block_1))
+                                        actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
+
+                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Wait));
+                                    // Add your logic for the "Down" direction here
                                 }
-                                // Add your logic for the "Up" direction here
-                            }
-                            case Down -> {
-                                System.out.println("A Down Operation is added");
+                                case Forward, Back, Left, Right -> {
+                                    System.out.println("A Forward Operation is added");
 
-                                if (!emptyBlockPos(block_1))
-                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
+                                    if (!emptyBlockPos(block_1))
+                                        actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
 
-                                actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Wait));
-                                // Add your logic for the "Down" direction here
-                            }
-                            case Forward, Back, Left, Right -> {
-                                System.out.println("A Forward Operation is added");
+                                    if (!emptyBlockPos(block_2))
+                                        actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
 
-                                if (!emptyBlockPos(block_1))
-                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
+                                    if (emptyBlockPos(block_0))
+                                        actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.Place));
 
-                                if (!emptyBlockPos(block_2))
-                                    actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
+                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Walk));
+                                    // Add your logic for the "Forward" direction here
+                                }
+                                case JumpUpForward, JumpUpBack, JumpUpLeft, JumpUpRight -> {
+                                    System.out.println("A JumpUp Operation is added");
 
-                                if (emptyBlockPos(block_0))
-                                    actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.Place));
+                                    //check block above player
+                                    assert CurrentUnit != null;
+                                    if (!emptyBlockPos(world.getBlockState(CurrentUnit.targetPos.offset(0, 2, 0))))
+                                        actionQueue.add(new ActionUnit(CurrentUnit.targetPos.offset(0, 2, 0), OperationEnum.Break));
 
-                                actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Walk));
-                                // Add your logic for the "Forward" direction here
-                            }
-                            case JumpUpForward, JumpUpBack, JumpUpLeft, JumpUpRight -> {
-                                System.out.println("A JumpUp Operation is added");
+                                    if (emptyBlockPos(block_0))
+                                        actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.Place));
 
-                                //check block above player
-                                assert CurrentUnit != null;
-                                if (!emptyBlockPos(world.getBlockState(CurrentUnit.targetPos.offset(0, 2, 0))))
-                                    actionQueue.add(new ActionUnit(CurrentUnit.targetPos.offset(0, 2, 0), OperationEnum.Break));
+                                    if (!emptyBlockPos(block_1))
+                                        actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
+                                    if (!emptyBlockPos(block_2))
+                                        actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
 
-                                if (emptyBlockPos(block_0))
-                                    actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.Place));
+                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.WalknJump));
+                                    // Add your logic for the "JumpUpForward" direction here
+                                }
+                                case JumpDownForward, JumpDownBack, JumpDownLeft, JumpDownRight -> {
+                                    System.out.println("A JumpDownForward Operation is added");
+                                    // Add your logic for the "JumpDownForward" direction here
+                                    if (!emptyBlockPos(block_3))
+                                        actionQueue.add(new ActionUnit(block_3_pos, OperationEnum.Break));
+                                    if (!emptyBlockPos(block_2))
+                                        actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
+                                    if (!emptyBlockPos(block_1))
+                                        actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
 
-                                if (!emptyBlockPos(block_1))
-                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
-                                if (!emptyBlockPos(block_2))
-                                    actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
+                                    if (emptyBlockPos(block_0))
+                                        actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.Place));
 
-                                actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.WalknJump));
-                                // Add your logic for the "JumpUpForward" direction here
-                            }
-                            case JumpDownForward, JumpDownBack, JumpDownLeft, JumpDownRight -> {
-                                System.out.println("A JumpDownForward Operation is added");
-                                // Add your logic for the "JumpDownForward" direction here
-                                if (!emptyBlockPos(block_3))
-                                    actionQueue.add(new ActionUnit(block_3_pos, OperationEnum.Break));
-                                if (!emptyBlockPos(block_2))
-                                    actionQueue.add(new ActionUnit(block_2_pos, OperationEnum.Break));
-                                if (!emptyBlockPos(block_1))
-                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Break));
-
-                                if (emptyBlockPos(block_0))
-                                    actionQueue.add(new ActionUnit(block_0_pos, OperationEnum.Place));
-
-                                actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Walk));
-                            }
-                            default -> {
-                                System.out.println("No direction matched");
-                                // Add your logic for unmatched directions here
+                                    actionQueue.add(new ActionUnit(block_1_pos, OperationEnum.Walk));
+                                }
+                                default -> {
+                                    System.out.println("No direction matched");
+                                    // Add your logic for unmatched directions here
+                                }
                             }
                         }
 
@@ -206,6 +212,10 @@
 
         public static boolean emptyBlockPos(BlockState state){
             return state.canBeReplaced();
+        }
+
+        public static boolean detectPlayerSwimming(BlockState s1,BlockState s2,BlockState s3,BlockState s4){
+            return s1.is(Blocks.WATER) || s2.is(Blocks.WATER) || s3.is(Blocks.WATER) || s4.is(Blocks.WATER);
         }
 
         public enum OperationEnum

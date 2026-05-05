@@ -1,8 +1,10 @@
 package lzh.net.client;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import lzh.net.feature.Astar;
 import lzh.net.feature.botSystem.autoBot;
+import lzh.net.feature.hertaBot.TsServerManager;
 import lzh.net.feature.path;
 
 import lzh.net.feature.renderingSystem.blockRenderer;
@@ -20,6 +22,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,9 +45,38 @@ public class LzhClient implements ClientModInitializer {
 	//bot
 	public static boolean startBot = false;
 
+	//ts server
+	public static boolean isTsSeverOnline = false;
+
+	//debug mode
+	public static boolean debugMode = false;
+
 	@Override
 	public void onInitializeClient() {
 		// This entrypoint is suitable for setting up client-specific logic, such as rendering.
+
+		//init the ts server
+		// 【挂载实时监听器！】
+		TsServerManager.registerListener(new TsLogListener() {
+			@Override
+			public void onNewLogReceived(String logLine) {
+				// 收到日志后要做什么？打印到游戏的聊天框里！
+				//Minecraft.getInstance().player.sendSystemMessage(Component.literal("TS SERVER: " + logLine));
+				// 为了防止普通日志刷屏，我们可以只把包含 "ERROR" 或者特定前缀的弹到游戏里
+				if (logLine.contains("ERROR") || logLine.contains("[TS Server]")) {
+					Minecraft mc = Minecraft.getInstance();
+					// 确保玩家已经进了世界，不是在主菜单
+					if (mc.player != null) {
+						// 把 TS 的日志包装成游戏里的文字发给玩家！
+						mc.player.sendSystemMessage(Component.literal("赛博大脑" + logLine));
+					}
+				}
+			}
+		});
+
+		// 挂载完毕后，启动服务器
+		TsServerManager.startHiddenTsServer();
+
 
 		//Register client side command
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
@@ -127,6 +160,16 @@ public class LzhClient implements ClientModInitializer {
 						.executes(clientCommand::debug))
 				.then(ClientCommands.literal("bot")
 						.executes(clientCommand::startBot))
+				.then(ClientCommands.literal("miniBot")
+						.executes(clientCommand::summonLittleBot)
+						.then(ClientCommands.literal("restart")
+								.executes(clientCommand::restartServer))
+						.then(ClientCommands.argument("name", StringArgumentType.string())
+								.executes(clientCommand::summonBotWithName)
+								.then(ClientCommands.literal("chat")
+										.then(ClientCommands.argument("message",StringArgumentType.string())
+												.executes(clientCommand::fireCommand)))))
+
 		);
 	}
 
@@ -144,5 +187,10 @@ public class LzhClient implements ClientModInitializer {
 
 		));
 		return 1;
+	}
+
+	public interface TsLogListener {
+		// 当 TS 吐出一行新日志时，这个方法就会被触发
+		void onNewLogReceived(String logLine);
 	}
 }
