@@ -38,3 +38,7 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+node-26.0.0
+npm-packaging/node_modules/
+*.exe

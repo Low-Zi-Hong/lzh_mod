@@ -4,6 +4,7 @@ package lzh.net.feature;
 import com.llamalad7.mixinextras.lib.apache.commons.ObjectUtils;
 import lzh.net.Lzh;
 import lzh.net.client.LzhClient;
+import lzh.net.feature.botSystem.autoBot;
 import net.fabricmc.loader.impl.lib.sat4j.core.Vec;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -13,6 +14,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -23,49 +25,54 @@ public class Astar {
     public static void Start(BlockPos startPos, BlockPos endPos,float thressholdDivDist) {
         if (startPos != null && endPos != null) {
 
-            Thread AstarAlgorithm = new Thread( () -> {
+            assert Minecraft.getInstance().player != null;
 
-                assert Minecraft.getInstance().player != null;
-                BlockPos playerCurrentPos = Minecraft.getInstance().player.getOnPos();
+            //determine temperory End posistion
+            //move the whole coordinate system and make the player current pos as the origin
+            BlockPos endPosToPlayer = endPos.subtract(startPos); //end pos relative to player pos
 
-                //determine temperory End posistion
-                //move the whole coordinate system and make the player current pos as the origin
-                BlockPos endPosToPlayer = endPos.subtract(playerCurrentPos); //end pos relative to player pos
+            //this find out the axis which furthest to the player
+            float distToPlayer = Mth.sqrt((endPosToPlayer.getX() *endPosToPlayer.getX()  + endPosToPlayer.getZ()*endPosToPlayer.getZ()));
+            BlockPos TempEndWorldBlockPos = null;
 
-                //this find out the axis which furthest to the player
-                float distToPlayer = Mth.sqrt((endPosToPlayer.getX() *endPosToPlayer.getX()  + endPosToPlayer.getZ()*endPosToPlayer.getZ()));
+            if ( distToPlayer > thressholdDivDist)
+            {
+                Vec3 TempEndWorldPos = detTempEndPos(endPosToPlayer, thressholdDivDist).add(startPos.getBottomCenter()); //realative to player coor
+                //Vec2 TempEndWorldPos = new Vec2f(playerCurrentPos.getX() + TempEnd2dPos.x, playerCurrentPos.getZ() + TempEnd2dPos.y);
+                TempEndWorldBlockPos = new BlockPos((int)TempEndWorldPos.x, Minecraft.getInstance().level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(TempEndWorldPos.x), Mth.floor(TempEndWorldPos.z)), (int)TempEndWorldPos.z);
+                LzhClient.tempEndPos = TempEndWorldBlockPos;
+                //MinecraftClient.getInstance().player.sendMessage(Text.literal("temp end pos" + TempEndWorldBlockPos.toShortString()),false);
 
-                if ( distToPlayer < thressholdDivDist)
-                {
-                    try {
-                        AstarAlgorithm(playerCurrentPos,endPos,true);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    //ClientInitialiser.runingWtfAlgo = false;
-                }
-                else
-                {
-                    Vec3 TempEndWorldPos = detTempEndPos(endPosToPlayer, thressholdDivDist).add(playerCurrentPos.getBottomCenter()); //realative to player coor
-                    //Vec2 TempEndWorldPos = new Vec2f(playerCurrentPos.getX() + TempEnd2dPos.x, playerCurrentPos.getZ() + TempEnd2dPos.y);
-                    BlockPos TempEndWorldBlockPos = new BlockPos((int)TempEndWorldPos.x, Minecraft.getInstance().level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(TempEndWorldPos.x), Mth.floor(TempEndWorldPos.z)), (int)TempEndWorldPos.z);
 
-                    try {
-                        AstarAlgorithm(playerCurrentPos, TempEndWorldBlockPos,true);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    //MinecraftClient.getInstance().player.sendMessage(Text.literal("temp end pos" + TempEndWorldBlockPos.toShortString()),false);
+                //ClientInitialiser.runingWtfAlgo = true;
+            }
+            else {
+                TempEndWorldBlockPos = endPos;
+                LzhClient.tempEndPos = endPos;
+            }
 
-                    LzhClient.tempEndPos = TempEndWorldBlockPos;
-                    //ClientInitialiser.runingWtfAlgo = true;
-                }
-            });
+            Thread AstarAlgorithm = getThread(startPos, TempEndWorldBlockPos);
 
             AstarAlgorithm.start();
 
 
         }
+    }
+
+    private static @NotNull Thread getThread(BlockPos startPos, BlockPos TempEndWorldBlockPos) {
+        BlockPos finalTempEndWorldBlockPos = TempEndWorldBlockPos;
+        Thread AstarAlgorithm = new Thread( () -> {
+            try {
+                AstarAlgorithm(startPos, finalTempEndWorldBlockPos,true);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.err.println("thread error");
+                throw new RuntimeException(e);
+            }finally {
+                LzhClient.isCalculating = false; // 无论如何，最后都要释放锁，允许下次寻路
+            }
+        });
+        return AstarAlgorithm;
     }
 
 //    private static Vec2 detTempEndPos(BlockPos endPosToPlayer, float variable)
@@ -432,6 +439,10 @@ public class Astar {
         {
             LzhClient.blocKPosToRender.add(new path.PathUnit(bestPathTrace.get(i).PathUnit_Coor,bestPathTrace.get(i).previous_Direction));
         }
+
+        LzhClient.blocKPosToRender.reversed();
+        if(LzhClient.startBot) autoBot.updateGeneratedPath = true;
+        //here reverse the list...
 
         //MinecraftClient.getInstance().player.sendMessage(Text.literal("Algorithm finish!"));
 
