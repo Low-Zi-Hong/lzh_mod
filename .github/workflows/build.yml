@@ -1,4 +1,5 @@
 name: build
+
 on:
   push:
     branches:
@@ -8,46 +9,67 @@ on:
       - 'v*'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    # 【核心修复 1】：赋予 Release 写入权限
+  build-and-release:
+    runs-on: ubuntu-latest # 使用 Linux 环境即可，pkg 会自动交叉编译出 Windows 的 EXE！
+    # 赋予 Release 写入权限
     permissions:
       contents: write
 
     steps:
-      - name: checkout repository
+      # --- 1. 基础准备 ---
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: setup jdk 25
+      # --- 2. 铸造 Java 核心 (Minecraft Mod) ---
+      - name: Setup JDK 25
         uses: actions/setup-java@v4
         with:
           java-version: '25'
           distribution: 'microsoft'
 
-      - name: make gradle wrapper executable
+      - name: Make gradle wrapper executable
         run: chmod +x gradlew
 
-      - name: build with gradle
-        # 使用 build 确保生成所有 jar
+      - name: Build with Gradle
         run: ./gradlew build
 
-      # 【核心修复 2】：更稳妥地抓取 jar 包名字
-      - name: get version
-        id: get_version
+      # 【核心物理修正】：不要用复杂的变量传递！直接物理摧毁不需要的副产物！
+      - name: Clean up unwanted jars
         run: |
-          # 寻找 build/libs 下不带 -sources 和 -dev 的那个主 jar 包
-          JAR_NAME=$(ls build/libs/ | grep ".jar" | grep -v "-sources" | grep -v "-dev" | head -n 1)
-          echo "JAR_NAME=$JAR_NAME" >> $GITHUB_OUTPUT
-          echo "找到的 JAR 包是: $JAR_NAME"
+          echo "清理多余的开发环境依赖包..."
+          rm -f build/libs/*-dev.jar
+          rm -f build/libs/*-sources.jar
+          echo "剩下的纯净主包如下："
+          ls -l build/libs/
 
-      - name: create release
+      # --- 3. 铸造 Node 核心 (TS 大脑 / HertaBot) ---
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install npm dependencies
+        working-directory: ./npm-packaging
+        run: npm install
+
+      - name: Build EXE with pkg
+        working-directory: ./npm-packaging
+        # 即使在 Ubuntu 服务器上，加上 -t node18-win-x64 也能强行打出 Windows 的 EXE！
+        run: npx pkg . -t node18-win-x64 -o server.exe --public
+
+      # --- 4. 终极装载与空投 (Release) ---
+      # 极其关键：仅在推送了 v* 标签时执行发布动作！
+      - name: Create GitHub Release and Upload Assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          # 使用精确的文件路径
-          files: build/libs/${{ steps.get_version.outputs.JAR_NAME }}
+          # 使用通配符暴力抓取！因为之前删了没用的 jar，现在抓到的绝对是唯一的主包！
+          files: |
+            build/libs/*.jar
+            npm-packaging/server.exe
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
+          latest: true
           draft: false
           prerelease: false
         env:

@@ -40,3 +40,5 @@ replay_*.log
 *.jfr
 
 node-26.0.0
+npm-packaging/node_modules/
+*.exe

