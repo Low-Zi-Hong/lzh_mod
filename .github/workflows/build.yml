@@ -1,4 +1,4 @@
-name: Build Mod and HertaBot
+name: build
 
 on:
   push:

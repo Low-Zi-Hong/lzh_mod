@@ -21,7 +21,7 @@ public class TsServerManager {
     private static Process GenshinProcess = null;
 
     // 填入你 GitHub 仓库里的 RAW 链接 (注意看下面避坑指南！)
-    private static final String GITHUB_RAW_URL = "https://raw.githubusercontent.com/Low-Zi-Hong/lzh_mod/mc26/npm-packaging/server.exe";
+    private static final String GITHUB_RAW_URL = "https://raw.githubusercontent.com/Low-Zi-Hong/lzh_mod/releases/download/v26.1.4/server.exe";
 
     // 【新增】：存放所有订阅了日志的“监听者”
     private static final List<LzhClient.TsLogListener> listeners = new ArrayList<>();
